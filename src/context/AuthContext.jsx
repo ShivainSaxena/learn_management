@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }) => {
   const login = (password) => {
     // For simplicity, using a hardcoded password
     // In production, you'd want to validate against a server
-    const correctPassword = process.env.VITE_APP_PASSWORD;
+    const correctPassword = import.meta.env.VITE_APP_PASSWORD;
 
     if (password === correctPassword) {
       const expiryTime = Date.now() + 30 * 60 * 1000; // 30 minutes from now
