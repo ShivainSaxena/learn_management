@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 
 // https://vite.dev/config/
+// When you change the ip of the api change in the netlify.toml
 export default defineConfig({
   plugins: [react()],
   server: {
