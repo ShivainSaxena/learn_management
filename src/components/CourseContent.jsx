@@ -6,7 +6,7 @@ import ContentPreview from "./ContentPreview";
 
 function CourseContent() {
   return (
-    <div className="container mx-auto px-4 py-8">
+    <div className="container mx-auto px-4">
       <Routes>
         <Route index element={<ContentList />} />
         <Route path="lesson/:contentId" element={<ContentPreview />} />

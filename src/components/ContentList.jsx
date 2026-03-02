@@ -17,14 +17,17 @@ function ContentList() {
   const [quizTitle, setQuizTitle] = useState("");
   const [selectedLessonFile, setSelectedLessonFile] = useState(null);
   const [jsonString, setJsonString] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
   const deleteContent = async (contentId) => {
+    setDeletingId(contentId);
     try {
       const response = await fetch(
         `/api/courses/${courseId}/content/${contentId}`,
         {
           method: "DELETE",
-        }
+        },
       );
 
       if (!response.ok) {
@@ -38,16 +41,18 @@ function ContentList() {
             return {
               ...c,
               contentlist: c.contentlist.filter(
-                (item) => item.id !== contentId
+                (item) => item.id !== contentId,
               ),
             };
           }
           return c;
-        })
+        }),
       );
     } catch (error) {
       console.error("Error deleting content:", error);
       alert("Failed to delete content. Please try again.");
+    } finally {
+      setDeletingId(null); // Stop Loading
     }
   };
 
@@ -89,7 +94,7 @@ function ContentList() {
           };
         }
         return c;
-      })
+      }),
     );
 
     // Then update the backend
@@ -99,6 +104,7 @@ function ContentList() {
   const handleQuizUpload = (event) => {
     const file = event.target.files[0];
     if (!file) return;
+    setIsUploading(true);
 
     const reader = new FileReader();
 
@@ -114,6 +120,7 @@ function ContentList() {
     };
 
     reader.readAsText(file);
+    setIsUploading(false);
   };
 
   const saveLesson = async () => {
@@ -122,22 +129,24 @@ function ContentList() {
       return;
     }
     if (!selectedLessonFile) {
-      alert("Please select a markdown file");
+      alert("Please select a pdf file");
       return;
     }
 
+    if (selectedLessonFile.size > 10 * 1024 * 1024) {
+      alert("File size must be less than 10MB");
+      return;
+    }
+    setIsUploading(true);
     try {
-      const fileContent = await selectedLessonFile.text();
+      const formData = new FormData();
+      formData.append("title", lessonTitle);
+      formData.append("type", "lesson");
+      formData.append("pdfFile", selectedLessonFile);
+
       const response = await fetch(`/api/courses/${courseId}/content`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: lessonTitle,
-          type: "lesson",
-          content: fileContent,
-        }),
+        body: formData,
       });
 
       if (!response.ok) {
@@ -151,7 +160,7 @@ function ContentList() {
             return { ...c, contentlist: data };
           }
           return c;
-        })
+        }),
       );
 
       setShowLessonModal(false);
@@ -160,6 +169,8 @@ function ContentList() {
     } catch (error) {
       console.error("Error uploading lesson:", error);
       alert("Failed to upload lesson. Please try again.");
+    } finally {
+      setIsUploading(false); // Stop Loading
     }
   };
 
@@ -197,7 +208,7 @@ function ContentList() {
             return { ...c, contentlist: data };
           }
           return c;
-        })
+        }),
       );
 
       setShowQuizModal(false);
@@ -277,7 +288,7 @@ function ContentList() {
                     <span className="sr-only">Choose lesson file</span>
                     <input
                       type="file"
-                      accept=".md,.markdown"
+                      accept=".pdf"
                       onChange={(event) =>
                         setSelectedLessonFile(event.target.files[0])
                       }
@@ -293,9 +304,35 @@ function ContentList() {
                     </button>
                     <button
                       onClick={saveLesson}
-                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700"
+                      disabled={isUploading}
+                      className={`px-4 py-2 rounded text-white flex items-center ${
+                        isUploading
+                          ? "bg-green-400 cursor-not-allowed"
+                          : "bg-green-600 hover:bg-green-700"
+                      }`}
                     >
-                      Upload
+                      {isUploading && (
+                        <svg
+                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                      )}
+                      {isUploading ? "Uploading..." : "Upload"}
                     </button>
                   </div>
                 </div>
@@ -331,9 +368,36 @@ function ContentList() {
                     </button>
                     <button
                       onClick={saveQuiz}
-                      className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700"
+                      disabled={isUploading || !quizTitle || !jsonString}
+                      className={`px-4 py-2 rounded text-white flex items-center transition-all ${
+                        isUploading
+                          ? "bg-purple-400 cursor-not-allowed"
+                          : "bg-purple-600 hover:bg-purple-700 shadow-sm"
+                      }`}
                     >
-                      Upload
+                      {isUploading && (
+                        <svg
+                          className="animate-spin -ml-1 mr-2 h-4 w-4 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
+                        </svg>
+                      )}
+                      {isUploading ? "Processing..." : "Upload Quiz"}
                     </button>
                   </div>
                 </div>
@@ -399,9 +463,16 @@ function ContentList() {
                             </Link>
                             <button
                               onClick={() => deleteContent(item.id)}
-                              className="px-3 py-1 bg-red-100 text-red-600 rounded hover:bg-red-200"
+                              disabled={deletingId === item.id}
+                              className={`px-3 py-1 rounded transition-colors ${
+                                deletingId === item.id
+                                  ? "bg-gray-200 text-gray-400 cursor-not-allowed"
+                                  : "bg-red-100 text-red-600 hover:bg-red-200"
+                              }`}
                             >
-                              Delete
+                              {deletingId === item.id
+                                ? "Deleting..."
+                                : "Delete"}
                             </button>
                             <div
                               {...provided.dragHandleProps}
